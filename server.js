@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const React = require('react');
 const {renderToString} = require('react-dom/server');
+const massive = require('massive');
 
 const app = express();
 app.use(bodyParser.json());
@@ -9,28 +10,40 @@ app.use(bodyParser.json());
 const port = 3000;
 
 app.get('/', (req, res) => {
-  res.send(
-    renderToString(
-      <html>
-        <head>
-          <title>Title</title>
-        </head>
-        <body>
-          <h1>Dude</h1>
-        </body>
-      </html>
-    )
-  );
+  const db = req.app.get('db');
+
+  db.getAllInjuries().then(injuries => {
+    res.send(injuries);
+  });
 });
 
 app.get('/incidents', (req, res) => {
-  res.send([]);
+  const db = req.app.get('db');
+  const state = req.query.state;
+
+  if(state){
+    db.getIncidentsByState([state]).then(incidents => (
+      res.send(incidents)
+    ));
+  }else{
+    db.getAllIncidents().then(incidents => (
+      res.send(incidents)
+    ));
+  }
 });
 
 app.post('/incidents', (req, res) => {
-  res.send({id: 123});
+  const db = req.app.get('db');
+  const incident = req.body;
+
+  db.createIncident([incident.state, incident.causeid, incident.injuryid]).then(results =>(
+    res.send(results[0])
+  ))
 });
 
-app.listen(port, () => {
-  console.log('Started server on port', port);
+massive(YOUR_CONNECTION_STRING).then(db => {
+  app.set('db', db);
+  app.listen(port, () => {
+    console.log('Magic is happening on', port);
+  });
 });
